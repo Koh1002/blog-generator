@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Idea {
+  id          String   @id @default(cuid())
+  content     String
+  title       String?
+  summary     String?
+  status      String   @default("inbox")
+  sourceType  String   @default("manual")
+  ideaType    String?
+  importance  Int      @default(3)
+  platformFit String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tags          IdeaTag[]
+  categories    IdeaCategory[]
+  drafts        Draft[]
+  publications  Publication[]
+  relationsFrom IdeaRelation[] @relation("IdeaFrom")
+  relationsTo   IdeaRelation[] @relation("IdeaTo")
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Category {
+  id    String         @id @default(cuid())
+  name  String         @unique
+  slug  String         @unique
+  ideas IdeaCategory[]
+}
+
+model Tag {
+  id    String    @id @default(cuid())
+  name  String    @unique
+  ideas IdeaTag[]
+}
+
+model IdeaTag {
+  id     String @id @default(cuid())
+  ideaId String
+  tagId  String
+  idea   Idea   @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([ideaId, tagId])
+}
+
+model IdeaCategory {
+  id         String   @id @default(cuid())
+  ideaId     String
+  categoryId String
+  idea       Idea     @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([ideaId, categoryId])
+}
+
+model Draft {
+  id          String       @id @default(cuid())
+  ideaId      String
+  platform    String
+  tone        String       @default("casual")
+  content     String
+  variant     Int          @default(1)
+  idea        Idea         @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  publication Publication?
+
+  createdAt DateTime @default(now())
+
+  @@index([ideaId])
+}
+
+model Publication {
+  id           String   @id @default(cuid())
+  ideaId       String
+  draftId      String?  @unique
+  platform     String
+  publishedAt  DateTime @default(now())
+  url          String?
+  reactionNote String?
+
+  idea  Idea   @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  draft Draft? @relation(fields: [draftId], references: [id], onDelete: SetNull)
+
+  @@index([ideaId])
+  @@index([platform])
+}
+
+model PromptTemplate {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  name        String
+  template    String
+  description String?
+}
+
+model IdeaRelation {
+  id            String @id @default(cuid())
+  ideaId        String
+  relatedIdeaId String
+  relationType  String
+
+  idea        Idea @relation("IdeaFrom", fields: [ideaId], references: [id], onDelete: Cascade)
+  relatedIdea Idea @relation("IdeaTo", fields: [relatedIdeaId], references: [id], onDelete: Cascade)
+
+  @@unique([ideaId, relatedIdeaId])
+}
+
+model AppSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
